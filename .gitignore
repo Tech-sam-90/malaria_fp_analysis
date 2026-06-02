@@ -12,8 +12,6 @@ model_b/test/
 # Model weights and checkpoints (large binary files)
 # =============================================================================
 model_checkpoints/
-outputs/model_a/
-outputs/model_b/
 *.pt
 *.pth
 *.ckpt
