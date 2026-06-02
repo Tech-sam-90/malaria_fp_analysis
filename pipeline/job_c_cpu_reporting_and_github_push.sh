@@ -13,7 +13,7 @@
 #   git add outputs/ → git commit → git push
 # =============================================================================
 
-#SBATCH --account=rpp-uanazodo
+#SBATCH --account=def-uanazodo-ab
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=01:00:00

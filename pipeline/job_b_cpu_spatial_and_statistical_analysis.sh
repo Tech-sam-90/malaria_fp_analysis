@@ -27,7 +27,7 @@
 #   outputs/analysis_results/phase_2–6/**/*.csv, *.png
 # =============================================================================
 
-#SBATCH --account=rpp-uanazodo
+#SBATCH --account=def-uanazodo-ab
 #SBATCH --mem=32G
 #SBATCH --cpus-per-task=8
 #SBATCH --time=03:00:00
