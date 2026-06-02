@@ -1,0 +1,305 @@
+SPARK Academy 2026 — Team Rwanda
+Malaria Parasite Detection: Full Analysis Plan (Phases 1–7)
+==============================================================
+
+PROJECT OVERVIEW
+----------------
+Malaria parasite detection on thick Giemsa blood smear images using the Lacuna Malaria
+Detection Challenge dataset. Two YOLO models are trained:
+  - Model A: Single-class detector (parasite only)
+  - Model B: Two-class detector (parasite + WBC)
+
+Three core objectives:
+  1. Train detection models and establish baseline performance
+  2. Extract and characterize False Positives (FPs) — primary metric is Precision, not mAP
+  3. Spatial analysis: test whether FPs cluster near White Blood Cell (WBC) locations
+
+==============================================================
+PHASE 1 — TRAINING (IN PROGRESS)
+==============================================================
+
+Tasks:
+  [x] Train Model A (single-class: parasite) — SLURM job 62217263
+      Current: epoch 60/75, mAP50 ≈ 0.758, mAP50-95 ≈ 0.315
+  [x] Train Model B (two-class: parasite + WBC) — SLURM job 62218818
+      Current: epoch 39/75, mAP50 ≈ 0.860, mAP50-95 ≈ 0.442
+  [ ] Wait for both jobs to complete
+  [ ] Collect best.pt weights for each model from runs/detect/train/weights/best.pt
+
+Notes:
+  - Image size: 1024, batch 16, GPU: A100 (30–31G VRAM used)
+  - Model B significantly outperforms Model A — WBC class likely provides spatial context
+    that helps discriminate small parasite-like blobs
+
+==============================================================
+PHASE 2 — BASELINE EVALUATION
+==============================================================
+
+Steps:
+  1. Run model.val() on the held-out test set for both models
+  2. Collect standard metrics: mAP50, mAP50-95, Precision, Recall, F1 at default threshold
+  3. Run COCO size-stratified AP: APsmall / APmedium / APlarge
+       - Parasites are typically small objects; APsmall is the most clinically relevant tier
+  4. Plot per-confidence FP rate curves
+       - Sweep confidence threshold 0.05 → 0.95 in steps of 0.05
+       - Plot FP count per image vs. threshold for each model
+       - Identifies the operating point where FP rate spikes
+  5. Generate confusion matrices at multiple IoU thresholds: {0.1, 0.3, 0.5, 0.7}
+       - For the two-class model, the WBC→Parasite off-diagonal cell quantifies class confusion
+
+Key paper:
+  - "Confidence Score: The Forgotten Dimension of Object Detection Performance Evaluation"
+    (MDPI Sensors 2021) — why precision at clinical operating threshold matters more than mAP
+
+==============================================================
+PHASE 3 — FALSE POSITIVE (FP) EXTRACTION PIPELINE
+==============================================================
+
+Steps:
+  1. Run model.predict() on test set, extract all boxes:
+       - box.xywh (x_center, y_center, width, height)
+       - box.conf (confidence score)
+       - box.cls (predicted class)
+  2. Match predictions against ground-truth annotations at IoU >= 0.5
+       - Label each prediction as TP (True Positive) or FP (False Positive)
+  3. Run TIDE error decomposition on both models:
+       - Install: pip install tidecv
+       - Error categories: Bkg (background FP), Cls (class confusion), Loc (poor
+         localization), Dup (duplicate detection), Miss (missed GT), Both
+       - KEY INSIGHT: Single-class model → all FPs are Bkg errors
+                      Two-class model → FPs split into Bkg vs. Cls (WBC-as-parasite)
+       - The Cls error count directly quantifies WBC-parasite confusion
+       - Paper: Bolya et al. (2020), TIDE, ECCV 2020. arXiv:2008.08115
+  4. COCO-FP background error analysis:
+       - Use COCO eval API analyze() function to decompose background FPs further
+       - Paper: "From COCO to COCO-FP" (arXiv 2409.07907, 2024)
+  5. Collect all FP centroids (x, y) per image for spatial analysis in Phase 4
+  6. Collect GT WBC centroids per image (from Model B annotations or ground-truth labels)
+  7. Hard negative audit:
+       - Examine top-50 highest-confidence FPs visually
+       - Categorize manually: WBC confusion / staining artifact / cell debris / other
+
+Key code pattern (FP extraction):
+  from ultralytics import YOLO
+  import pandas as pd
+
+  model = YOLO('runs/detect/train/weights/best.pt')
+  results = model.predict(source='data/test/images', save=False, conf=0.25)
+  records = []
+  for r in results:
+      for box in r.boxes:
+          records.append({
+              'image': r.path,
+              'x_ctr': float(box.xywh[0][0]),
+              'y_ctr': float(box.xywh[0][1]),
+              'w':     float(box.xywh[0][2]),
+              'h':     float(box.xywh[0][3]),
+              'conf':  float(box.conf[0]),
+              'cls':   int(box.cls[0]),
+          })
+  df = pd.DataFrame(records)
+  # Next: match against GT at IoU >= 0.5 to label each row TP or FP
+
+==============================================================
+PHASE 4 — SPATIAL ANALYSIS OF FPs RELATIVE TO WBCs
+==============================================================
+
+Hypothesis: FPs cluster near WBC locations (WBCs are the primary confounder for
+parasite detection in thick smears).
+
+Steps:
+
+  4.1 Mann-Whitney U + cKDTree Distance (baseline test)
+      - Compute distance from each FP centroid to its nearest WBC centroid
+      - Compute distance from each TP centroid to its nearest WBC centroid
+      - Test: FP distances < TP distances using Mann-Whitney U (alternative='less')
+      - Report: mean FP dist, mean TP dist, p-value
+      Code:
+        from scipy.spatial import cKDTree
+        from scipy.stats import mannwhitneyu
+        tree = cKDTree(wbc_centers)
+        fp_dists, _ = tree.query(fp_centers)
+        tp_dists, _ = tree.query(tp_centers)
+        stat, p = mannwhitneyu(fp_dists, tp_dists, alternative='less')
+
+  4.2 Distance Stratification Analysis
+      - Bin FPs by distance to nearest WBC: 0–10px, 10–25px, 25–50px, 50–100px, >100px
+      - Compute FP rate per distance band
+      - Plot FP rate vs. distance band to show spatial decay of WBC effect
+
+  4.3 Ripley's Cross-K Function
+      - K12(r): expected number of FPs within radius r of a WBC centroid, normalized
+      - Compare to Complete Spatial Randomness (CSR) null envelope via Monte Carlo
+      - If K12(r) > CSR envelope at small r: FPs are spatially attracted to WBCs
+      - Implementation: Python pointpats package (PySAL) or R spatstat
+      - Paper: Molina et al. (2010), PMC2889688 (spatial K function in microscopy)
+      - Toolbox: MuSpAn (docs.muspan.co.uk) for multiscale spatial analysis
+
+  4.4 Kernel Density Estimation (KDE) Correlation
+      - Build KDE density surface for FP centroids per image (scipy.stats.gaussian_kde)
+      - Build KDE density surface for WBC centroids per image
+      - Compute pixel-wise Pearson r between FP density and WBC density
+      - Report mean r ± SD across all test images
+      - High positive r: FP density spatially tracks WBC density
+
+  4.5 Moran's I (Local Spatial Autocorrelation)
+      - Divide each image into a grid of 50×50 pixel tiles
+      - Count FPs per tile → spatial count array
+      - Compute Global Moran's I with queen-contiguity spatial weights
+      - Run Local Moran's I (LISA) to find FP hot-spot tiles
+      - Test if hot-spot tiles co-occur with high WBC density tiles
+      - Implementation: Python esda / libpysal packages (PySAL ecosystem)
+
+  4.6 Overdispersion Test (Negative Binomial)
+      - Test whether FP counts per image follow Poisson (random) or negative binomial
+        (overdispersed = clustered)
+      - Compute index of dispersion = variance / mean; test vs. chi-squared (n-1 df)
+      - If overdispersed: use negative binomial as null for further spatial tests,
+        not Poisson
+      - Foundational paper: Meissner et al. (2013), "Evidence for overdispersion in
+        the distribution of malaria parasites and leukocytes in thick blood smears"
+        PMC3831262
+
+  4.7 DBSCAN Clustering
+      - Apply DBSCAN to FP centroid coordinates per image
+      - Parameters: eps=50 pixels (approx. WBC diameter), min_samples=2
+      - Characterize: number of clusters, cluster sizes, inter-cluster distances
+      - Test: do DBSCAN clusters co-locate with annotated WBC positions?
+      - Code:
+          from sklearn.cluster import DBSCAN
+          labels = DBSCAN(eps=50, min_samples=2).fit(fp_centers).labels_
+
+==============================================================
+PHASE 5 — STATISTICAL MODEL COMPARISON (MODEL A vs MODEL B)
+==============================================================
+
+Steps:
+
+  5.1 Paired Bootstrap for mAP (primary comparison)
+      - Resample test images with replacement 10,000 times
+      - Compute mAP50 for both models on each resample
+      - Report BCa 95% confidence interval for (mAP_B - mAP_A)
+      - Report bootstrap p-value (fraction of resamples where difference reverses sign)
+      - Package: stambo (github.com/imedslab/stambo)
+      - Paper: "When +1% Is Not Enough" (arXiv 2511.19794, 2025)
+
+  5.2 Wilcoxon Signed-Rank Test (per-image AP)
+      - Compute AP50 per test image for both models independently
+      - Apply Wilcoxon signed-rank test: scipy.stats.wilcoxon(ap_A, ap_B)
+      - Report: test statistic, two-sided p-value, effect size (rank-biserial r)
+      - Handles floor/ceiling effects (AP=0 or AP=1 for trivial/impossible images)
+
+  5.3 McNemar's Test (per GT annotation)
+      - 2x2 contingency table: detected by A only / B only / both / neither
+      - Separately for recall (TP per GT) and FP binary outcomes
+      - Implementation: mlxtend.evaluate.mcnemar
+
+  5.4 Stratified McNemar by WBC-Proximity Band
+      - Run McNemar's test within each distance band from Step 4.2
+      - Apply Benjamini-Hochberg FDR correction across the 5 band p-values
+      - Tests whether Model B's advantage is specifically in WBC-proximal detections
+
+  5.5 Empirical Upper Bound Analysis
+      - Compute what AP would be with oracle NMS (no duplicates) or perfect localization
+      - Separates localization error from classification/background error
+      - Shows remaining headroom for each model
+      - Papers: arXiv 1911.12451, arXiv 2004.02877
+
+==============================================================
+PHASE 6 — CONFIDENCE CALIBRATION
+==============================================================
+
+Rationale: YOLO confidence scores are known to be overconfident. For clinical reporting
+of malaria parasite density, a calibrated confidence = actual probability of true parasite.
+
+Steps:
+
+  6.1 Pre-calibration diagnostics
+      - Compute ECE (Expected Calibration Error) and MCE (Maximum Calibration Error)
+      - Plot reliability diagrams for both models
+        (mean accuracy vs. mean confidence per bin; perfect calibration = diagonal)
+      - Paper: Naeini et al. (2015), "Obtaining Well Calibrated Probabilities Using
+        Bayesian Binning into Quantiles"
+
+  6.2 Temperature Scaling
+      - Learn single scalar T on a calibration split (minimise NLL)
+      - Apply: scaled_conf = sigmoid(logit(raw_conf) / T)
+      - T > 1 reduces overconfidence; T < 1 increases confidence
+      - No model retraining required
+      - Report ECE before and after scaling for both models
+      - Reference: Guo et al. (2017), "On Calibration of Modern Neural Networks", ICML
+      - YOLO-specific result: ECE reduced from 6.78% to 2.31% on YOLO-World (MDPI 2025)
+      - Implementation: netcal Python library
+
+  6.3 Multivariate (Position-Aware) Calibration
+      - Calibrator inputs: (confidence, box_x, box_y, box_w, box_h)
+      - Tests whether model is less calibrated near WBC-dense image regions
+      - Directly links calibration analysis to the spatial FP hypothesis
+      - Paper: Kuppers et al. (2020), "Multivariate Confidence Calibration for Object
+        Detection", CVPR Workshop. arXiv:2004.13546
+
+  6.4 IoU-Aware Calibration (optional, replaces NMS)
+      - Down-weights duplicate detections by predicted IoU instead of hard suppression
+      - Handles clustered parasite detections more gracefully than standard NMS
+      - Reduces Dup FP category identified by TIDE (Phase 3)
+      - Paper: Gilg et al. (2024), WACV 2024. arXiv:2309.03110
+
+==============================================================
+PHASE 7 — REPORTING AND VISUALISATION
+==============================================================
+
+Figures to produce:
+  1. TIDE stacked bar chart: Bkg / Cls / Loc / Dup / Miss error % for Model A and B
+  2. Per-confidence FP rate curves (Model A vs B on same axes)
+  3. Confusion matrices at IoU = 0.1, 0.5, 0.7 (side by side for both models)
+  4. FP spatial heatmaps (KDE overlay on example test images, with WBC annotations)
+  5. Ripley's Cross-K curves with Monte Carlo CSR confidence envelopes
+  6. Distance stratification bar chart (FP rate per WBC-proximity band)
+  7. Reliability diagrams before/after temperature scaling (both models)
+  8. DBSCAN cluster visualisation on example images
+
+Tables to produce:
+  1. Baseline metrics: mAP50, mAP50-95, Precision, Recall, F1 — Model A vs B
+  2. COCO size-stratified AP: APsmall, APmedium, APlarge — Model A vs B
+  3. TIDE error breakdown (% per category) — Model A vs B
+  4. Statistical comparison: bootstrap 95% CI for delta-mAP, Wilcoxon p-value,
+     McNemar p-value (with BH-corrected stratified results)
+  5. Calibration metrics: ECE, MCE before/after temperature scaling — Model A vs B
+  6. Spatial analysis summary: mean FP dist to WBC, mean TP dist to WBC,
+     Mann-Whitney p-value, Moran's I, overdispersion index
+
+==============================================================
+KEY REFERENCES
+==============================================================
+
+Detection & Evaluation:
+  - TIDE: Bolya et al. (ECCV 2020). arXiv:2008.08115
+  - COCO-FP: Duan et al. (2024). arXiv:2409.07907
+  - Confidence Score as metric: MDPI Sensors 2021, DOI:10.3390/s21134350
+  - Empirical upper bound: arXiv:1911.12451, arXiv:2004.02877
+
+Spatial Analysis:
+  - Ripley's K in microscopy: Molina et al. (2010). PMC2889688
+  - SPACE framework: PLOS Comp Bio (2024). PMC11057815
+  - DBSCAN: Ester et al. (1996). sklearn.cluster.DBSCAN
+  - Overdispersion in thick smears: Meissner et al. (2013). PMC3831262
+  - MuSpAn toolbox: docs.muspan.co.uk
+
+Model Comparison:
+  - Paired bootstrap: "When +1% Is Not Enough", arXiv:2511.19794
+  - stambo package: github.com/imedslab/stambo
+  - McNemar's test: mlxtend.evaluate.mcnemar
+
+Calibration:
+  - Temperature scaling: Guo et al. (ICML 2017)
+  - Multivariate calibration: Kuppers et al. (CVPR Workshop 2020). arXiv:2004.13546
+  - IoU-aware calibration: Gilg et al. (WACV 2024). arXiv:2309.03110
+  - YOLO calibration result: MDPI Applied Sciences 2025
+
+Malaria-Specific:
+  - YOLO-PAM (WBC attention): MDPI J. Imaging 2023, PMC10744183
+  - Metrics for clinical malaria ML: Frontiers in Malaria 2024
+  - Leukocyte + parasite joint pipeline: Sensors 2025, DOI:10.3390/s25020390
+  - YOLOv3 FP rate analysis: Frontiers in Microbiology 2025, PMC12611930
+
+==============================================================

@@ -1,0 +1,6 @@
+path: /home/sadeniji/scratch/Practicum_Main_Project/model_a
+train: train/images
+val: valid/images
+test: test/images
+nc: 1
+names: ['parasite']

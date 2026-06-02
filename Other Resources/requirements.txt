@@ -1,0 +1,4 @@
+Host Spark-HPC
+    HostName nibi.alliancecan.ca
+    User rrf-005
+    IdentityFile "C:\Users\ifeol\spark_project"
