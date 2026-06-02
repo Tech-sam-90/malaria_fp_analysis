@@ -21,7 +21,7 @@
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
-set -euo pipefail
+set -uo pipefail   # removed -e so individual failures don't abort the git push
 
 echo "============================================"
 echo "Job C: Phase 7 Reporting + GitHub Push"
@@ -33,26 +33,35 @@ echo "============================================"
 module load gcc opencv python/3.11
 source ~/scratch/venv/bin/activate
 
+pip install -q openpyxl 2>/dev/null || true
+
 export WANDB_MODE=disabled
 
 cd ~/scratch/Practicum_Main_Project
 
 step() { echo; echo ">>> [$(date '+%H:%M:%S')] $1"; }
 
-# =============================================================================
-# PHASE 7 — REPORTING
-# =============================================================================
-step "Phase 7: Generate TIDE error breakdown chart"
-python Notebooks/phase_7_reporting/generate_tide_error_breakdown_chart.py
-echo "    Done."
+run_step() {
+    local label="$1"; shift
+    step "$label"
+    if python "$@"; then
+        echo "    Done."
+    else
+        echo "    WARNING: $label failed — continuing to next step."
+    fi
+}
 
-step "Phase 7: Generate spatial heatmaps and KDE overlays"
-python Notebooks/phase_7_reporting/generate_spatial_heatmaps_and_kde_overlays.py
-echo "    Done."
+# =============================================================================
+# PHASE 7 — REPORTING (all non-fatal)
+# =============================================================================
+run_step "Phase 7: Generate TIDE error breakdown chart" \
+    Notebooks/phase_7_reporting/generate_tide_error_breakdown_chart.py
 
-step "Phase 7: Generate final summary tables"
-python Notebooks/phase_7_reporting/generate_final_summary_tables.py
-echo "    Done."
+run_step "Phase 7: Generate spatial heatmaps and KDE overlays" \
+    Notebooks/phase_7_reporting/generate_spatial_heatmaps_and_kde_overlays.py
+
+run_step "Phase 7: Generate final summary tables" \
+    Notebooks/phase_7_reporting/generate_final_summary_tables.py
 
 # =============================================================================
 # GITHUB PUSH
