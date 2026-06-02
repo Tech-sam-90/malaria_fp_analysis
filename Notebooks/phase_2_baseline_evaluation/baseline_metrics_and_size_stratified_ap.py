@@ -31,7 +31,7 @@ from ultralytics import YOLO
 # PATHS
 # =============================================================================
 project_root  = Path("/home/sadeniji/scratch/Practicum_Main_Project")
-model_a_weights = project_root / "outputs/model_a/model_a_parasite_detection/weights/best.pt"
+model_a_weights = project_root / "outputs/model_a/model_a_parasite_detection-7/weights/best.pt"
 model_b_weights = project_root / "outputs/model_b/model_b_parasite_wbc_detection/weights/best.pt"
 data_yaml_a     = project_root / "model_a/data_model_a.yaml"
 data_yaml_b     = project_root / "model_b/data_model_b.yaml"
