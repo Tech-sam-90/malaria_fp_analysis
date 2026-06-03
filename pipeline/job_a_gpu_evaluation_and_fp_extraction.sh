@@ -27,7 +27,7 @@
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
-set -euo pipefail
+set -uo pipefail   # -e removed so individual step failures don't abort the job
 
 echo "============================================"
 echo "Job A: GPU Evaluation + FP Extraction"

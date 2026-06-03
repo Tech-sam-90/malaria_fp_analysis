@@ -42,7 +42,7 @@ out_dir.mkdir(parents=True, exist_ok=True)
 
 CONF_THRESHOLD = 0.10   # low threshold to capture all detections
 IOU_THRESHOLD  = 0.50   # PASCAL standard for TP matching
-IMG_W, IMG_H   = 1024, 1024   # training image size
+IMG_W, IMG_H   = 2048, 2048   # actual test image dimensions (YOLO predictions are in original-image space)
 
 for name, p in [("Model A weights", model_a_weights), ("Model B weights", model_b_weights),
                 ("Test images A", test_images_a), ("Test labels A", test_labels_a),
