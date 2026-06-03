@@ -218,5 +218,3 @@ python Notebooks/phase_4_spatial_analysis/mannwhitney_distance_to_nearest_wbc.py
 ## Team
 
 **SPARK Academy 2026 — Team Rwanda**
-Supervisor: Prof. Uche Anazodo (rpp-uanazodo)
-Compute: Narval HPC, Compute Canada
