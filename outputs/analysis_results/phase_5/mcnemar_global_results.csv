@@ -1,0 +1,2 @@
+subset,n_annotations,A_correct_B_wrong,A_wrong_B_correct,chi2,p_value,significant_p05,model_favored
+All annotations,2374,38,136,54.0747,0.0,True,B

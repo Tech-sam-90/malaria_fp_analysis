@@ -1,0 +1,10 @@
+image_id,cluster_id,n_fp_in_cluster,centroid_x,centroid_y,dist_to_nearest_wbc,wbc_associated
+id_2phbgf1x5m_jpg.rf.cb31f3b307f4830929f84de94a8c3ea8,0,4,1086.87,571.17,377.18,False
+id_58ee05nnpt_jpg.rf.0235372976edef5b5eb33ecb6e3181b5,0,3,1216.29,566.36,335.52,False
+id_bu04j7jxbr_jpg.rf.36fa836302e37cc4a4b0ac94ea8ba4c5,0,3,751.47,797.59,241.1,False
+id_dv8w9xzrvu_jpg.rf.c026f8837430267eb20361a6909f39cf,0,3,912.71,665.39,497.86,False
+id_f1532fixpr_jpg.rf.d0ba53615788cae2ada60664fc23d343,0,3,885.22,969.43,342.93,False
+id_ioti1d4xew_jpg.rf.183eda551fb775a7f1ccf3c3f1afec2d,0,3,1474.16,1561.28,1555.45,False
+id_tbop9cccoc_jpg.rf.51059917e3fb55888698fcf655c61eaa,0,3,569.61,691.29,178.68,False
+id_tuiwsxil2e_jpg.rf.67617eb6a5f53ac80dabddae1baa8716,0,3,1052.57,1451.75,829.54,False
+id_xculy3gzpk_jpg.rf.f1c63c889e7c6efccad63e141546853d,0,3,884.18,1270.6,752.82,False

@@ -1,0 +1,6 @@
+subset,n_annotations,A_correct_B_wrong,A_wrong_B_correct,chi2,p_value,significant_p05,model_favored,bh_significant
+0–30 px,22,0,1,0.0,1.0,False,neither,False
+30–75 px,231,2,12,5.7857,0.016157,True,B,True
+75–150 px,584,4,26,14.7,0.000126,True,B,True
+150–300 px,776,14,37,9.4902,0.002066,True,B,True
+>300 px,423,10,30,9.025,0.002663,True,B,True

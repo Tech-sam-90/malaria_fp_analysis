@@ -1,0 +1,2 @@
+model,ece_raw,temperature_T,ece_temperature_scaling,ece_multivariate_lr,ece_isotonic,lr_coef_x_norm,lr_coef_y_norm,lr_coef_w_norm,lr_coef_h_norm
+Model_B_parasite,0.123,0.9284,0.1268,0.0364,0.0231,-0.0677,0.0756,0.291,-0.285

@@ -141,10 +141,6 @@ p_value = np.mean(np.abs(deltas) >= np.abs(observed_delta))
 
 # BCa confidence interval
 alpha = 0.05
-# Bias correction
-z0 = np.percentile(stats_norm_ppf := (lambda x: np.sqrt(2) * np.erfinv(2*x-1)),
-                    np.mean(deltas < observed_delta))
-
 def bca_ci(boot_samples, observed, confidence=0.95):
     from scipy.stats import norm
     n_boot = len(boot_samples)

@@ -137,7 +137,7 @@ for img_id, gt_boxes in gt_parasites.items():
         dist = np.nan
         if len(wbc_img) > 0:
             tree = cKDTree(wbc_img[['x', 'y']].values)
-            dist = float(tree.query([[gt_cx, gt_cy]])[0])
+            dist = float(tree.query([[gt_cx, gt_cy]])[0][0])
         paired_rows.append({
             'image_id': img_id,
             'gt_cx': gt_cx, 'gt_cy': gt_cy,
@@ -153,7 +153,8 @@ print(f"Paired GT annotations: {len(df_paired)}")
 # GLOBAL McNEMAR TEST
 # =============================================================================
 def run_mcnemar(y_a, y_b, label):
-    ct = mcnemar_table(y_a.astype(int), y_b.astype(int))
+    y_target = np.ones(len(y_a), dtype=int)  # all GT annotations should be detected
+    ct = mcnemar_table(y_target, y_a.astype(int), y_b.astype(int))
     chi2_stat, p = mcnemar(ct, corrected=True)
     n01 = ct[0, 1]   # A correct, B wrong
     n10 = ct[1, 0]   # A wrong, B correct

@@ -1,0 +1,7 @@
+model,tier,value
+Model_A,per_class_mAP50_95,0.3021900958481235
+Model_A,metrics/mAP50(B),0.7553418207068122
+Model_A,metrics/mAP50-95(B),0.3021900958481235
+Model_B,per_class_mAP50_95,0.42861760007492083
+Model_B,metrics/mAP50(B),0.8592889472290384
+Model_B,metrics/mAP50-95(B),0.4286176000749209

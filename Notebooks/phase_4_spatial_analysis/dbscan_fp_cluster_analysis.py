@@ -116,7 +116,7 @@ for img_id, group in fps.groupby('image_id'):
 
         dist_to_wbc = np.nan
         if wbc_tree is not None:
-            dist_to_wbc = float(wbc_tree.query([ctr])[0])
+            dist_to_wbc = float(wbc_tree.query([ctr])[0][0])
 
         cluster_rows.append({
             'image_id': img_id,

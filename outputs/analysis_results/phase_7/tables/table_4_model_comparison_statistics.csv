@@ -1,0 +1,4 @@
+test,statistic,value,95_CI,p_value
+Paired Bootstrap,Δ mAP50,0.0234,"[0.0056, 0.0420]",0.4985
+Wilcoxon Signed-Rank,W,7013.5,—,0.0221511612568885
+McNemar (global),χ²,54.0747,—,0.0
